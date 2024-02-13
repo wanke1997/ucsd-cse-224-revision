@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
+	"sync"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -33,6 +36,60 @@ func readServerConfigs(configPath string) ServerConfigs {
 	return scs
 }
 
+// golang server
+func listen(client_server_wg *sync.WaitGroup, Host string, Port string, amount int) {
+	address := Host + ":" + Port
+	ln, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	// initialize mutex with value of (amount-1)
+	wg.Add(amount - 1)
+
+	// create threads to handle (amount-1) connections
+	for i := 0; i < amount-1; i += 1 {
+		conn, err := ln.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+		// sub-thread for listener connection
+		go handleConnection(conn, i, &wg)
+	}
+	wg.Wait()
+	client_server_wg.Done()
+}
+
+// thread handler to deal with detailed work
+func handleConnection(conn net.Conn, conn_id int, wg *sync.WaitGroup) {
+	bs := make([]byte, 4)
+	conn.Read(bs)
+	str := string(bs)
+	text := "This is " + str + " connection.\n"
+	print(text)
+	conn.Close()
+	wg.Done()
+}
+
+// golang client
+func dial(client_server_wg *sync.WaitGroup, scs ServerConfigs, serverId int) {
+	for i := 0; i < len(scs.Servers); i++ {
+		if i == serverId {
+			continue
+		}
+		address := scs.Servers[i].Host + ":" + scs.Servers[i].Port
+		conn, err := net.Dial("tcp", address)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer conn.Close()
+		bs := []byte(strconv.Itoa(serverId))
+		conn.Write(bs)
+	}
+	client_server_wg.Done()
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -49,5 +106,14 @@ func main() {
 
 	// Read server configs from file
 	scs := readServerConfigs(os.Args[4])
+	amount := len(scs.Servers)
 	fmt.Println("my host name:", scs.Servers[serverId].Host)
+
+	// create a client, a server, and a mutex
+	var client_server_wg sync.WaitGroup
+	client_server_wg.Add(2)
+	go listen(&client_server_wg, scs.Servers[serverId].Host, scs.Servers[serverId].Port, amount)
+	time.Sleep(3 * time.Second)
+	go dial(&client_server_wg, scs, serverId)
+	client_server_wg.Wait()
 }
