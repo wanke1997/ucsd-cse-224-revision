@@ -5,12 +5,9 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"sync"
 
 	"gopkg.in/yaml.v3"
 )
-
-var lock *sync.Mutex
 
 type ServerConfigs struct {
 	Servers []struct {
@@ -29,6 +26,9 @@ func readServerConfigs(configPath string) ServerConfigs {
 
 	scs := ServerConfigs{}
 	err = yaml.Unmarshal(f, &scs)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return scs
 }
