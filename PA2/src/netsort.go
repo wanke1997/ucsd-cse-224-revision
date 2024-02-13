@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"strconv"
 	"sync"
@@ -23,7 +21,7 @@ type ServerConfigs struct {
 }
 
 func readServerConfigs(configPath string) ServerConfigs {
-	f, err := ioutil.ReadFile(configPath)
+	f, err := os.ReadFile(configPath)
 
 	if err != nil {
 		log.Fatalf("could not read config file %s : %v", configPath, err)
@@ -51,9 +49,5 @@ func main() {
 
 	// Read server configs from file
 	scs := readServerConfigs(os.Args[4])
-	mainWg := sync.WaitGroup{}
-	mainWg.Add(1)
-	lock = new(sync.Mutex)
-	connMap := make(map[int]net.Conn)
-	//fmt.Println("Got the following server configs:", scs)
+	fmt.Println("my host name:", scs.Servers[serverId].Host)
 }
