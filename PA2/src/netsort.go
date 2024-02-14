@@ -94,7 +94,6 @@ func handleConnection(conn net.Conn, conn_id int, wg *sync.WaitGroup, tempFile s
 func dial(clientServerWG *sync.WaitGroup, scs ServerConfigs, serverId int, sendKeys map[int][][]byte, sendValues map[int][][]byte) {
 	for i := 0; i < len(scs.Servers); i++ {
 		if i == serverId {
-			fmt.Println("my own data:", len(sendKeys[i]))
 			continue
 		}
 		address := scs.Servers[i].Host + ":" + scs.Servers[i].Port
@@ -243,13 +242,9 @@ func main() {
 		keys = append(keys, key)
 		values = append(values, value)
 	}
-	time.Sleep(2 * time.Second)
-	fmt.Println("amount of data:", len(keys))
 
 	// partition the data
 	sendKeys, sendValues := partition(keys, values, amount)
-	time.Sleep(1 * time.Second)
-
 	tempFile := "temp_file.dat"
 	os.Remove(tempFile)
 	// append the data
@@ -258,7 +253,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// store server's own data in the array
+	// store server's own data in the temp file
 	for i := 0; i < len(sendKeys[serverId]); i += 1 {
 		key := sendKeys[serverId][i]
 		value := sendValues[serverId][i]
@@ -271,7 +266,7 @@ func main() {
 	var clientServerWG sync.WaitGroup
 	clientServerWG.Add(2)
 	go listen(&clientServerWG, scs.Servers[serverId].Host, scs.Servers[serverId].Port, amount, tempFile)
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 	go dial(&clientServerWG, scs, serverId, sendKeys, sendValues)
 	clientServerWG.Wait()
 
@@ -299,7 +294,7 @@ func main() {
 		receive_values = append(receive_values, value)
 	}
 	tempF.Close()
-	fmt.Println("length of received data", len(receive_keys))
+	fmt.Println("number of data in the server", len(receive_keys))
 	os.Remove(tempFile)
 
 	// sort the data
