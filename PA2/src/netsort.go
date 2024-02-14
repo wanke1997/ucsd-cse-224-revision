@@ -50,6 +50,8 @@ func listen(clientServerWG *sync.WaitGroup, Host string, Port string, amount int
 	var wg sync.WaitGroup
 	// initialize mutex with value of (amount-1)
 	wg.Add(amount - 1)
+	// lock for writing tempFile
+	var lock sync.Mutex
 
 	// create threads to handle (amount-1) connections
 	for i := 0; i < amount-1; i += 1 {
@@ -57,15 +59,15 @@ func listen(clientServerWG *sync.WaitGroup, Host string, Port string, amount int
 		if err != nil {
 			log.Fatal(err)
 		}
-		// sub-thread for listener connection
-		go handleConnection(conn, i, &wg, tempFile)
+		// sub-thread for listener connections
+		go handleConnection(conn, i, tempFile, &wg, &lock)
 	}
 	wg.Wait()
 	clientServerWG.Done()
 }
 
 // thread handler to deal with detailed work
-func handleConnection(conn net.Conn, conn_id int, wg *sync.WaitGroup, tempFile string) {
+func handleConnection(conn net.Conn, conn_id int, tempFile string, wg *sync.WaitGroup, lock *sync.Mutex) {
 	tempF, err := os.OpenFile(tempFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -80,10 +82,9 @@ func handleConnection(conn net.Conn, conn_id int, wg *sync.WaitGroup, tempFile s
 				log.Fatal(err)
 			}
 		}
-		key := buffer[:10]
-		value := buffer[10:]
-		tempF.Write(key)
-		tempF.Write(value)
+		lock.Lock()
+		tempF.Write(buffer)
+		lock.Unlock()
 	}
 	conn.Close()
 	tempF.Close()
