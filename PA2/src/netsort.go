@@ -213,7 +213,6 @@ func main() {
 
 	// read the input file
 	f, err := os.Open(os.Args[2])
-	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -243,6 +242,7 @@ func main() {
 		keys = append(keys, key)
 		values = append(values, value)
 	}
+	f.Close()
 
 	// partition the data
 	sendKeys, sendValues := partition(keys, values, amount)
